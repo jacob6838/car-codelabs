@@ -16,8 +16,17 @@
 
 package com.example.places
 
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.car.app.connection.CarConnection
@@ -41,12 +50,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.example.places.data.PlacesRepository
 import com.example.places.data.model.Place
 import com.example.places.data.model.toIntent
 import com.example.places.ui.theme.PlacesTheme
+import com.example.android.cars.carappservice.R
+
+private val channel_id = "jacob_testing";
+private val channel_name = "jacob_testing_name";
+private val channel_description = "jacob_testing_description";
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -74,6 +92,22 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        createNotificationChannel()
+    }
+
+    private fun createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is not in the Support Library.
+        val importance = NotificationManager.IMPORTANCE_HIGH
+        val channel = NotificationChannel(channel_id, channel_name, importance).apply {
+            description = channel_description
+        }
+
+        // Register the channel with the system.
+        val notificationManager: NotificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
     }
 }
 
@@ -111,7 +145,41 @@ fun PlaceList(places: List<Place>) {
                     )
                     .clip(RoundedCornerShape(8.dp))
                     .clickable {
+
+
                         context.startActivity(place.toIntent(Intent.ACTION_VIEW))
+
+                        Handler(Looper.getMainLooper()).postDelayed(
+                            {
+                                val builder = NotificationCompat.Builder(context, channel_id)
+                                    .setSmallIcon(R.drawable.baseline_navigation_24)
+                                    .setContentTitle("My Notification")
+                                    .setContentText("My Notification Content Text")
+                                    .setPriority(NotificationManager.IMPORTANCE_HIGH)
+                                    .setCategory(Notification.CATEGORY_NAVIGATION)
+
+                                with(NotificationManagerCompat.from(context)) {
+                                    if (ActivityCompat.checkSelfPermission(
+                                            context,
+                                            Manifest.permission.POST_NOTIFICATIONS
+                                        ) != PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        // TODO: Consider calling
+                                        // ActivityCompat#requestPermissions
+                                        // here to request the missing permissions, and then overriding
+                                        // public fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>,
+                                        //                                        grantResults: IntArray)
+                                        // to handle the case where the user grants the permission. See the documentation
+                                        // for ActivityCompat#requestPermissions for more details.
+
+                                        return@with
+                                    }
+                                    // notificationId is a unique int for each notification that you must define.
+                                    notify(1, builder.build())
+                                }
+                            },
+                            3000 // value in milliseconds
+                        )
                     }
                     .padding(8.dp)
             ) {
