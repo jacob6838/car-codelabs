@@ -20,12 +20,15 @@ import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -65,8 +68,45 @@ private val channel_description = "jacob_testing_description";
 
 class MainActivity : ComponentActivity() {
 
+    private var messagingService: MessagingService? = null;
+    private var isBound = false
+
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            val binder = service as MessagingService.LocalBinder
+            messagingService = binder.getService()
+            isBound = true
+        }
+
+        override fun onServiceDisconnected(arg0: ComponentName) {
+            messagingService = null
+            isBound = false
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Bind to YourService
+        Intent(this, MessagingService::class.java).also { intent ->
+            bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Unbind from the service
+        if (isBound) {
+            unbindService(connection)
+            isBound = false
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+        createNotificationChannel()
+
 
         setContent {
             val carConnectionType by CarConnection(this).type.observeAsState(initial = -1)
@@ -87,13 +127,11 @@ class MainActivity : ComponentActivity() {
                             carConnectionType = carConnectionType,
                             modifier = Modifier.padding(8.dp)
                         )
-                        PlaceList(places = PlacesRepository().getPlaces())
+                        PlaceList(places = PlacesRepository().getPlaces(), messagingService)
                     }
                 }
             }
         }
-
-        createNotificationChannel()
     }
 
     private fun createNotificationChannel() {
@@ -128,7 +166,7 @@ fun ProjectionState(carConnectionType: Int, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun PlaceList(places: List<Place>) {
+fun PlaceList(places: List<Place>, messagingService: MessagingService?) {
     val context = LocalContext.current
 
     LazyColumn {
@@ -151,32 +189,35 @@ fun PlaceList(places: List<Place>) {
 
                         Handler(Looper.getMainLooper()).postDelayed(
                             {
-                                val builder = NotificationCompat.Builder(context, channel_id)
-                                    .setSmallIcon(R.drawable.baseline_navigation_24)
-                                    .setContentTitle("My Notification")
-                                    .setContentText("My Notification Content Text")
-                                    .setPriority(NotificationManager.IMPORTANCE_HIGH)
-                                    .setCategory(Notification.CATEGORY_NAVIGATION)
 
-                                with(NotificationManagerCompat.from(context)) {
-                                    if (ActivityCompat.checkSelfPermission(
-                                            context,
-                                            Manifest.permission.POST_NOTIFICATIONS
-                                        ) != PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        // TODO: Consider calling
-                                        // ActivityCompat#requestPermissions
-                                        // here to request the missing permissions, and then overriding
-                                        // public fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>,
-                                        //                                        grantResults: IntArray)
-                                        // to handle the case where the user grants the permission. See the documentation
-                                        // for ActivityCompat#requestPermissions for more details.
+                                messagingService?.notify(context, 12)
 
-                                        return@with
-                                    }
-                                    // notificationId is a unique int for each notification that you must define.
-                                    notify(1, builder.build())
-                                }
+//                                val builder = NotificationCompat.Builder(context, channel_id)
+//                                    .setSmallIcon(R.drawable.baseline_navigation_24)
+//                                    .setContentTitle("My Notification")
+//                                    .setContentText("My Notification Content Text")
+//                                    .setPriority(NotificationManager.IMPORTANCE_HIGH)
+//                                    .setCategory(Notification.CATEGORY_NAVIGATION)
+//
+//                                with(NotificationManagerCompat.from(context)) {
+//                                    if (ActivityCompat.checkSelfPermission(
+//                                            context,
+//                                            Manifest.permission.POST_NOTIFICATIONS
+//                                        ) != PackageManager.PERMISSION_GRANTED
+//                                    ) {
+//                                        // TODO: Consider calling
+//                                        // ActivityCompat#requestPermissions
+//                                        // here to request the missing permissions, and then overriding
+//                                        // public fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>,
+//                                        //                                        grantResults: IntArray)
+//                                        // to handle the case where the user grants the permission. See the documentation
+//                                        // for ActivityCompat#requestPermissions for more details.
+//
+//                                        return@with
+//                                    }
+//                                    // notificationId is a unique int for each notification that you must define.
+//                                    notify(1, builder.build())
+//                                }
                             },
                             3000 // value in milliseconds
                         )
