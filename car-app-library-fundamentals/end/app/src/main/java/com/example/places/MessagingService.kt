@@ -3,6 +3,7 @@ package com.example.places
 import android.Manifest
 import android.app.IntentService
 import android.app.Notification
+import android.app.NotificationManager
 import android.app.PendingIntent
 import androidx.core.app.Person
 import androidx.core.app.RemoteInput
@@ -225,12 +226,14 @@ class MessagingService : IntentService("MessagingService") {
         val notification = NotificationCompat.Builder(context, channel_id)
             // A required field for the Android UI.
             .setSmallIcon(R.drawable.baseline_notification_important_24)
+            .setCategory(Notification.CATEGORY_MESSAGE)
 
             // Shows in Android Auto as the conversation image.
             .setLargeIcon(drawableToBitmap(ContextCompat.getDrawable(context, R.drawable.baseline_donut_large_24)!!))
 
             // Adds MessagingStyle.
             .setStyle(messagingStyle)
+            .setPriority(NotificationManager.IMPORTANCE_HIGH)
 
             // Adds reply action.
             .addAction(replyAction)
